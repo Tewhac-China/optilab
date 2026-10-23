@@ -1,0 +1,42 @@
+/* ═══════════════════════════════════════════════════════════
+   embed.css · 宿主内嵌模式（?embed=1）
+   只在 <html class="optilab-embed"> 下生效，独立打开 index.html 时完全不受影响。
+   目标：把顶栏让给宿主，把三栏压窄，让画布在 700–1000 px 宽的容器里也能用。
+   ═══════════════════════════════════════════════════════════ */
+
+html.optilab-embed,
+html.optilab-embed body { overflow: hidden; }
+
+/* 顶栏是宿主该提供的东西：品牌、模式切换、撤销、导出全部让出去 */
+html.optilab-embed #topbar { display: none; }
+
+html.optilab-embed #app {
+  grid-template-columns: 250px minmax(0, 1fr) 296px;
+  grid-template-rows: 0 minmax(0, 1fr) 54px;
+}
+
+/* 内嵌时不落盘也不弹「恢复上次配置」，避免和宿主的实验进度打架 */
+html.optilab-embed .boot-sub { letter-spacing: .14em; }
+
+/* 中等宽度：让左栏更窄一点，画布优先 */
+@media (max-width: 1180px) {
+  html.optilab-embed #app { grid-template-columns: 226px minmax(0, 1fr) 272px; }
+}
+
+/* 窄容器（LabFlow 默认实验台宽度）：隐去左栏，保留 3D 画布 + 光场/判据栏。
+   元件的针孔微调仍可用方向键（← → ↑ ↓），引导卡与诊断都在画布上。 */
+@media (max-width: 940px) {
+  html.optilab-embed #app { grid-template-columns: 0 minmax(0, 1fr) 268px; }
+  html.optilab-embed #left { display: none; }
+  html.optilab-embed .viewtool { font-size: 11px; }
+}
+
+/* 很窄（分栏并排显示时）：只留画布 */
+@media (max-width: 620px) {
+  html.optilab-embed #app { grid-template-columns: 0 minmax(0, 1fr) 0; grid-template-rows: 0 minmax(0, 1fr) 48px; }
+  html.optilab-embed #left,
+  html.optilab-embed #right { display: none; }
+}
+
+/* 内嵌时不必提示「双击 index.html」，也不再重复显示宿主已有的品牌 */
+html.optilab-embed #toast { bottom: 66px; }

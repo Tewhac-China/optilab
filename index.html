@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OPTILAB · 联合傅里叶变换相关识别虚拟实验室</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%2322d3ee' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4' fill='none' stroke='%23f472b6' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%23ff3b3b'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/embed.css">
+</head>
+<body>
+
+<!-- ══════════════ 载入遮罩 ══════════════ -->
+<div id="boot">
+  <div class="boot-inner">
+    <div class="boot-mark">
+      <svg viewBox="0 0 64 64" width="64" height="64">
+        <defs><linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#f472b6"/></linearGradient></defs>
+        <circle cx="32" cy="32" r="20" fill="none" stroke="url(#bg1)" stroke-width="1.4"/>
+        <circle cx="32" cy="32" r="12" fill="none" stroke="url(#bg1)" stroke-width="1.4" opacity=".6"/>
+        <circle cx="32" cy="32" r="3" fill="#ff3b3b"/>
+        <path d="M2 32h16M46 32h16" stroke="url(#bg1)" stroke-width="1.4"/>
+      </svg>
+    </div>
+    <h1>OPTILAB</h1>
+    <p class="boot-sub">Joint-Fourier Transform Correlation · Virtual Laboratory</p>
+    <div class="boot-bar"><i id="bootBar"></i></div>
+    <p class="boot-log" id="bootLog">正在初始化 GPU 上下文…</p>
+  </div>
+</div>
+
+<!-- ══════════════ 主界面 ══════════════ -->
+<div id="app" class="hidden">
+
+  <!-- ── 顶栏 ── -->
+  <header id="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" width="22" height="22" class="brand-svg">
+        <circle cx="16" cy="16" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <circle cx="16" cy="16" r="5" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".55"/>
+        <circle cx="16" cy="16" r="1.7" fill="#ff3b3b"/>
+        <path d="M1 16h7M24 16h7" stroke="currentColor" stroke-width="1.6"/>
+      </svg>
+      <div class="brand-txt">
+        <b>OPTILAB</b>
+        <span>联合傅里叶变换相关识别 · 虚拟实验室</span>
+      </div>
+    </div>
+
+    <div class="topstrip">
+      <div class="mode-switch" id="modeSwitch">
+        <button data-mode="free" class="on">自由探索</button>
+        <button data-mode="guide">引导实验</button>
+      </div>
+
+      <div class="views" id="viewSwitch">
+        <button data-view="bench" class="on" title="光学平台全景">箱庭</button>
+        <button data-view="beam" title="沿光轴剖视">光轴</button>
+        <button data-view="screen" title="探测器视角">屏面</button>
+      </div>
+
+      <div class="telemetry" id="telemetry">
+        <div class="tm"><label>FPS</label><b id="tmFps">—</b></div>
+        <div class="tm"><label>GPU 计算</label><b id="tmCompute">—</b></div>
+        <div class="tm"><label>FFT</label><b id="tmFft">—</b></div>
+        <div class="tm"><label>分辨率</label><b id="tmRes">—</b></div>
+      </div>
+
+      <button class="iconbtn" id="btnUndo" title="撤销 (Ctrl+Z)">↶</button>
+      <button class="iconbtn" id="btnRedo" title="重做 (Ctrl+Shift+Z)">↷</button>
+      <button class="iconbtn" id="btnResetAll" title="重置全部（清空本地存档）">⨯</button>
+      <button class="iconbtn" id="btnExport" title="导出实验记录 (E)">⎘</button>
+      <button class="iconbtn" id="btnHelp" title="操作说明">?</button>
+      <button class="iconbtn" id="btnShot" title="保存当前画面">⤓</button>
+    </div>
+  </header>
+
+  <!-- ── 左栏：实验流程 / 元件 ── -->
+  <aside id="left">
+    <div class="panel">
+      <div class="panel-h">
+        <span class="dot c-cyan"></span><h3>实验流程</h3>
+        <div class="tabs" id="leftTabs">
+          <button data-t="steps" class="on">流程</button>
+          <button data-t="parts">元件</button>
+        </div>
+        <button class="mini icon" id="btnAutoRun" title="故障演练：自动依次施加典型错误">⚡</button>
+      </div>
+      <div class="left-pane" id="paneSteps">
+        <ol class="steps" id="stepList"></ol>
+        <div class="faults">
+          <div class="faults-h">
+            <span class="faults-t" id="faultsT" title="点击展开 / 收起典型错误清单">典型错误 <b id="faultsCaret">▾</b></span>
+            <button class="mini" id="btnClearFaults">全复位</button></div>
+          <div class="fault-chips" id="faultList"></div>
+        </div>
+      </div>
+      <div class="left-pane hidden" id="paneParts">
+        <div class="parts" id="partList"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><span class="dot c-amber"></span><h3>光路调节</h3>
+        <span class="hint">真实影响计算</span></div>
+      <div class="lab-adj">
+        <div class="adj-row">
+          <div class="pad-wrap">
+            <div class="pad" id="pinPad" title="拖动把针孔对到焦斑中心">
+              <i class="pad-axis-x"></i><i class="pad-axis-y"></i>
+              <b class="pad-dot" id="pinDot"></b>
+            </div>
+            <span class="pad-label">针孔微调</span>
+          </div>
+          <div class="adj-read">
+            <div class="r"><span>偏心 δ</span><b id="pinOffVal">0.0 µm</b></div>
+            <div class="r"><span>透过率 T</span><b id="pinFluxVal">90 %</b></div>
+            <button class="btn wide" id="btnPinCenter">一键对中</button>
+            <span class="adj-note">方向键 ↑↓←→ 可微调 1 µm</span>
+          </div>
+        </div>
+        <div class="adj-row col">
+          <div class="adj-lab"><label>照明光阑② 通光半径</label><b id="irisVal">4.0 mm</b></div>
+          <input type="range" id="irisRange" min="1.2" max="28" step="0.1" value="4">
+          <span class="adj-note">4 mm 包住 6.3 mm 光柱；&lt; 2.9 mm 会切到目标</span>
+        </div>
+        <div class="adj-row col">
+          <div class="adj-lab"><label>检偏器 P2 方位角</label><b id="polVal">90°</b></div>
+          <input type="range" id="polRange" min="0" max="179" step="1" value="90">
+          <span class="adj-note" id="polNote">与 P1（0°）正交时对比度最高</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><span class="dot c-amber"></span><h3>光路诊断</h3></div>
+      <div class="diag" id="diagList"></div>
+    </div>
+  </aside>
+
+  <!-- ── 3D 视口 ── -->
+  <main id="stage">
+    <canvas id="gl"></canvas>
+
+    <div class="stage-overlay">
+      <div class="hud-tl" id="hudTL"></div>
+      <div class="hud-tr" id="hudTR"></div>
+      <div class="hud-bl" id="crosshairReadout"></div>
+      <div class="beam-chart" id="beamChart">
+        <div class="bc-h"><b>光束半径 w(x)</b><span id="bcSub">1/e² · 随元件实时变化</span></div>
+        <canvas id="bcCanvas" width="600" height="150"></canvas>
+      </div>
+      <div class="hover-tip" id="hoverTip"></div>
+      <div class="viewtool" id="viewTool">
+        <button data-act="reset">复位</button>
+        <button data-act="top">俯视</button>
+        <button data-act="side">侧视</button>
+        <button data-act="fit">适配</button>
+        <span class="sep"></span>
+        <button data-act="beams" class="tog on" title="显示 / 隐藏光束（快捷键 B）">光束</button>
+        <button data-act="beamsection" class="tog" title="在各光学平面画出光束截面圆（半径 = 1/e² 光斑半径）">光斑</button>
+        <button data-act="beamscale" class="tog on" title="光柱加粗显示：真实直径只有 6–9 mm，全台面视角下只有两三个像素，所以默认按 ×2 画；悬停提示与 w(x) 曲线始终是真实值">光柱 ×2</button>
+        <button data-act="autorotate" class="tog">环绕</button>
+      </div>
+      <div class="legend" id="legend3d"></div>
+    </div>
+
+    <!-- 引导卡片 -->
+    <div class="guide-card hidden" id="guideCard">
+      <div class="gc-head">
+        <span class="gc-idx" id="gcIdx">STEP 1</span>
+        <span class="gc-title" id="gcTitle"></span>
+        <button class="gc-fold" id="gcFold" title="收起 / 展开说明（不挡光路）">⌄</button>
+      </div>
+      <p class="gc-body" id="gcBody"></p>
+      <div class="gc-check" id="gcCheck"></div>
+      <div class="gc-devs" id="gcDevs"></div>
+      <div class="gc-actions">
+        <button id="gcPrev">上一步</button>
+        <button id="gcAct" class="hidden"></button>
+        <button id="gcNext" class="primary">下一步</button>
+      </div>
+    </div>
+
+    <!-- 元件检视浮窗 -->
+    <div class="inspect hidden" id="inspect">
+      <div class="ins-h"><b id="insName"></b><button id="insClose">✕</button></div>
+      <div class="ins-b" id="insBody"></div>
+    </div>
+  </main>
+
+  <!-- ── 右栏：参数 + 光场 ── -->
+  <aside id="right">
+    <div class="panel folded" id="paramPanel">
+      <div class="panel-h"><span class="dot c-cyan"></span><h3>光学参数</h3>
+        <span class="fold-sum" id="paramSum">λ 632.8 nm · f₁/f₂ 150 mm</span>
+        <button class="mini icon" id="btnFold" title="展开参数（12 项）">▸</button>
+        <button class="mini" id="btnReset">重置</button></div>
+      <div class="mode-row">
+        <label>JPS 处理</label>
+        <div class="tabs" id="jpsTabs">
+          <button data-jps="0" class="on">原始</button>
+          <button data-jps="1">二值化</button>
+          <button data-jps="2">纯相位</button>
+          <button data-jps="3">高通</button>
+        </div>
+      </div>
+      <div class="ctrls" id="ctrlList"></div>
+    </div>
+
+    <div class="panel grow">
+      <div class="panel-h"><span class="dot c-amber"></span><h3>光场视图</h3>
+        <div class="tabs" id="fieldTabs">
+          <button data-f="input" class="on">输入</button>
+          <button data-f="jps">谱面</button>
+          <button data-f="output">相关</button>
+        </div>
+        <button class="mini" id="btnFieldRef" title="冻结当前光场为参考，再点一次取消（A/B 对比）">A/B</button>
+        <button class="iconbtn tiny" id="btnFieldFull" title="全屏查看光场 (F)">⤢</button>
+      </div>
+      <div class="pat-now">
+        <div class="pn"><canvas id="pnF" width="64" height="64"></canvas><span>f</span></div>
+        <div class="pn"><canvas id="pnG" width="64" height="64"></canvas><span>g</span></div>
+        <div class="pn-txt">
+          <b id="pnNames">f ≡ g</b>
+          <i id="patternInfo">f ≡ g · 应出现锐利相关峰</i>
+        </div>
+        <button class="mini" id="btnPickPat">更换…</button>
+      </div>
+      <div class="fieldview">
+        <canvas id="fieldCanvas" width="512" height="512"></canvas>
+        <div class="fv-badge" id="fvBadge"></div>
+        <div class="profile-wrap">
+          <canvas id="profileCanvas" width="512" height="160"></canvas>
+          <span class="pv-label">沿 <b id="pvAxis">ξ</b> 轴强度剖面</span>
+          <div class="pv-tabs" id="pvTabs">
+            <button data-a="x" class="on" title="沿 ξ（水平）过峰剖面">ξ</button>
+            <button data-a="y" title="沿 η（竖直）过峰剖面">η</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><span class="dot c-cyan"></span><h3>识别结果</h3>
+        <span class="hint">质量判据</span></div>
+      <div class="quality" id="quality"></div>
+      <div class="metrics" id="metrics"></div>
+    </div>
+  </aside>
+
+  <!-- ── 底栏：数据处理链 ── -->
+  <footer id="dock">
+    <div class="chain" id="chain"></div>
+    <div class="dock-right">
+      <label class="chk"><input type="checkbox" id="cbLogJps" checked><span>谱面对数显示</span></label>
+      <label class="chk"><input type="checkbox" id="cbAutocompute" checked><span>实时求解</span></label>
+      <button class="btn primary" id="btnSolve">重新求解 ⌘↵</button>
+    </div>
+  </footer>
+</div>
+
+<!-- ══════════════ 帮助 ══════════════ -->
+<div class="modal hidden" id="helpModal">
+  <div class="modal-box">
+    <div class="modal-h"><h2>操作说明</h2><button id="helpClose">✕</button></div>
+    <div class="modal-b">
+      <div class="mcol">
+        <h4>箱庭视角</h4>
+        <ul>
+          <li><b>左键拖动</b> 旋转视角 · <b>右键拖动</b> 平移 · <b>滚轮</b> 缩放</li>
+          <li><b>单击元件</b> 选中并显示参数</li>
+          <li><b>按住拖动元件</b> 沿导轨移动（引导模式下会吸附到理论位置）</li>
+          <li><b>W A S D</b> 漫游 · <b>Q E</b> 升降 · <b>Shift</b> 加速</li>
+        </ul>
+      </div>
+      <div class="mcol">
+        <h4>会真实影响结果的调节</h4>
+        <ul>
+          <li><b>针孔微调</b>（左栏调节盘 / 方向键 1 µm）：偏心 δ 使透过率按
+              <b>exp(−2δ²/w₀²)</b> 骤降，并让照明偏心 → 峰变弱直至被噪声淹没</li>
+          <li><b>照明光阑②</b>：真的截断输入面；关到 &lt; 2.9 mm 就会切掉目标轮廓，
+              同时下游光柱在 3D 里同步变细</li>
+          <li><b>检偏器 P2</b>（左栏滑块，或直接看 3D 里的刻度环）：与起偏器 P1 正交
+              (Δ=90°) 时液晶的振幅调制最深；转偏 → 条纹对比度按 sinΔ 衰减，Δ→0 条纹消失</li>
+          <li><b>拖动准直镜</b>离开焦面 → 球面波照明 → 等效谱面离焦、条纹变钝</li>
+          <li><b>拖动 CMOS / 输出屏</b>离开后焦面 → 模糊圆卷积，条纹与峰一起劣化</li>
+          <li><b>改 f₁ / f₂</b>：探测器会自动跟到新后焦面（练习调焦请手动拖动 CMOS）</li>
+          <li>光太弱（偏心 / 小光阑）→ 记录信噪比下降，相关峰被噪声淹没</li>
+        </ul>
+      </div>
+      <div class="mcol">
+        <h4>判据与典型错误</h4>
+        <ul>
+          <li>右侧「质量判据」给出条纹对比度 V、针孔透过率、分离度 2a:w、信噪比、
+              照明均匀度、光阑截断——做错了哪一项立刻变红</li>
+          <li>「无有效相关峰」表示峰不显著或位置偏离，当前峰位读数不可信</li>
+          <li>左侧「典型错误」一键施加常见失误，观察结果如何崩，再点一次复原</li>
+          <li><b>JPS 处理</b>：原始 / 二值化 / 纯相位 / 高通，对比现代方法对峰的改善</li>
+          <li>输入面 f(x−a) + g(x+a) → 谱面 S = |FT{h}|² → 二次变换 → 峰在 ξ = ±2a·f₂/f₁</li>
+        </ul>
+      </div>
+      <div class="mcol">
+        <h4>快捷键</h4>
+        <ul>
+          <li><b>1 / 2 / 3</b> 切换箱庭 / 光轴 / 屏面视图 · <b>R</b> 复位视角</li>
+          <li><b>Space</b> 自动环绕 · <b>B</b> 光束 · <b>G</b> 悬浮光场面板 · <b>F</b> 全屏光场</li>
+          <li><b>Ctrl+Z / Ctrl+Shift+Z</b> 撤销 / 重做（含故障与参数）</li>
+          <li><b>Tab</b> 依次选中元件 · <b>Delete</b> 把选中元件放回理论位置</li>
+          <li><b>← → ↑ ↓</b> 针孔 1 µm 微调（<b>Shift</b> 5 µm）</li>
+          <li><b>P</b> 保存画面 · <b>Ctrl+E</b> 导出实验记录 · <b>?</b> 本说明</li>
+          <li>光场视图右上 <b>◫</b> 冻结参考做 A/B 对比（左参考 / 右当前，可拖动分界）；<b>⤢</b> 或双击全屏</li>
+          <li>拖动元件默认吸附 <b>0.25 mm</b> 刻度，按住 <b>Shift</b> 进入 0.02 mm 精调</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ 目标图案选择 ══════════════ -->
+<div class="modal hidden" id="patModal">
+  <div class="modal-box pat-box">
+    <div class="modal-h">
+      <h2>选择目标图案</h2>
+      <div class="tabs" id="slotTabs">
+        <button data-slot="f" class="on">待识别 f</button>
+        <button data-slot="g">参考 g</button>
+      </div>
+      <button id="patClose">✕</button>
+    </div>
+    <div class="pattern-grid big" id="patternGrid"></div>
+    <div class="pat-foot">
+      <button class="btn" id="btnSwap">互换 f / g</button>
+      <button class="btn" id="btnRandom">随机目标</button>
+      <span class="pat-hint">选中后立即生效，可继续切换 f / g 槽位</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ 全屏光场 ══════════════ -->
+<div class="fieldfull hidden" id="fieldFull">
+  <div class="ff-wrap">
+    <div class="ff-h">
+      <span class="ff-dot"></span>
+      <b id="ffTitle">相关面</b>
+      <span class="ff-sub" id="ffSub"></span>
+      <span class="ff-sp"></span>
+      <button class="ff-txt" id="ffCopy" title="复制图像到剪贴板 (Ctrl+C)">复制</button>
+      <button class="ff-txt" id="ffSave" title="保存 PNG（含标题与比例尺）">保存</button>
+      <div class="ff-zoom">
+        <button id="ffOut" title="缩小">−</button>
+        <span id="ffZoom">1.0×</span>
+        <button id="ffIn" title="放大">+</button>
+        <button id="ffFit" title="适应窗口（回到 1.0×）">⤢</button>
+      </div>
+      <button id="ffClose" title="关闭 (Esc / 点空白处)">✕</button>
+    </div>
+    <div class="ff-body">
+      <canvas id="ffCanvas"></canvas>
+      <div class="ff-read" id="ffRead"></div>
+      <div class="ff-scale" id="ffScale"></div>
+      <div class="ff-cbar" id="ffCbar"></div>
+    </div>
+    <div class="ff-foot" id="ffFoot"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ══════════════ 脚本 ══════════════ -->
+<script src="js/math.js"></script>
+<script src="js/gl.js"></script>
+<script src="js/geometry.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/fft.js"></script>
+<script src="js/patterns.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/optics.js"></script>
+<script src="js/world.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+<script src="js/embed.js"></script>
+</body>
+</html>
