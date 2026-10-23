@@ -106,6 +106,12 @@
     var initial = parseInt(params.get('step'), 10);
     if (!isNaN(initial)) applyCmd(app, 'set-step', initial);
 
+    /* 内嵌容器通常只有 700–900 px 宽，引导卡的正文会把 3D 画布压没。
+       宿主一般自带步骤说明，所以默认收起正文，只留标题 / 判据 / 上下步。 */
+    var fold = document.getElementById('gcFold');
+    var card = document.getElementById('guideCard');
+    if (fold && card && !card.classList.contains('folded')) fold.click();
+
     // 步骤 / 模式变化回传（低频轮询，避免改 app.js 内部逻辑）
     setInterval(function () { reportStep(app); }, 400);
 
